@@ -1,0 +1,1596 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Media Plan Simulator · Мегафон</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #00B956; --primary-dark: #009640; --secondary: #731982;
+            --gradient: linear-gradient(90deg, #00B956 0%, #731982 100%);
+            --danger: #e74c3c; --dark: #2c3e50; --light: #f0f2f5;
+            --shadow: 0 4px 12px rgba(0,0,0,0.04); --highlight-start: #00B956; --highlight-end: #731982;
+            --text: #1a1a1a; --border: #e0e4e8; --bg: #ffffff;
+            --card-bg: #ffffff; --header-bg: var(--gradient);
+            --metric-bg: #f8fbfe; --tab-bg: #f1f5f9;
+            --letter-bg: #ffffff; --letter-border: #eaeef3;
+            --progress-bg: #e9ecef; --progress-success: #00B956; --progress-fail: #00B956;
+        }
+        body.dark-theme {
+            --primary: #00d46a; --primary-dark: #00b956; --secondary: #b07cc9;
+            --gradient: linear-gradient(90deg, #00d46a 0%, #b07cc9 100%);
+            --dark: #ecf0f3; --light: #2c3e50;
+            --shadow: 0 4px 12px rgba(0,0,0,0.3);
+            --highlight-start: #00d46a; --highlight-end: #b07cc9;
+            --text: #e0e0e0; --border: #3a4a5a; --bg: #1e2a36;
+            --card-bg: #2a3745;
+            --metric-bg: #2a3745;
+            --tab-bg: transparent;
+            --letter-bg: #2a3745; --letter-border: #3a4a5a;
+            --progress-bg: #3a4a5a;
+        }
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background-color: #eef2f5;
+            color: var(--text);
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            background-color: var(--bg);
+            transition: background-color 0.3s, color 0.3s;
+            font-size: 16px;
+        }
+        body.dark-theme {
+            background-color: #121a24;
+        }
+        .btn {
+            padding: 12px 22px; border: none; border-radius: 40px; font-weight: 600;
+            font-size: 14px; cursor: pointer; transition: 0.2s;
+            display: inline-flex; align-items: center; gap: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        }
+        .btn-primary { background: var(--gradient); color: white; }
+        .btn-primary:hover { background: linear-gradient(90deg, #009640, #5f1068); transform: translateY(-2px); box-shadow: 0 8px 18px rgba(0,185,86,0.3); }
+        .btn-secondary { background: var(--card-bg); border: 1px solid var(--border); color: var(--dark); }
+        .btn-secondary:hover { background: #f8fafc; border-color: var(--primary); }
+        .btn-icon { background: transparent; border: none; font-size: 18px; color: #5f6b7a; cursor: pointer; }
+        .btn-icon:hover { color: var(--primary); transform: scale(1.1); }
+
+        .game-container {
+            max-width: 1920px; width: 100%; background: var(--card-bg); border-radius: 28px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.05); padding: 28px 32px;
+            transition: background-color 0.3s;
+        }
+        .game-header {
+            background: var(--gradient); padding: 20px 30px; border-radius: 24px;
+            margin-bottom: 28px; color: white; display: flex; flex-direction: column;
+        }
+        .header-row {
+            display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;
+        }
+        .header-left h1 {
+            font-size: 28px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+            background: rgba(0,0,0,0.1); padding: 6px 20px; border-radius: 40px;
+            margin: 0 0 10px 0;
+        }
+        .header-left .theme-toggle {
+            background: rgba(255,255,255,0.2);
+            border: none; border-radius: 30px; padding: 8px 20px; color: white; cursor: pointer;
+            display: inline-flex; align-items: center; gap: 8px; font-size: 14px;
+        }
+        .header-right .logos {
+            display: flex; align-items: center; gap: 50px;
+        }
+        .logo {
+            height: 22px; width: auto; filter: brightness(0) invert(1);
+        }
+        .logo.megafon { content: url('https://upload.wikimedia.org/wikipedia/commons/thumb/d/d1/MegaFon_logo_Russian.svg/960px-MegaFon_logo_Russian.svg.png'); height: 45px; }
+        .logo.mig { content: url('https://static.tildacdn.com/tild3038-6237-4636-b839-643662626137/MIG_logo.svg'); height: 42px; }
+        .budget-progress-container {
+            height: 12px; background: rgba(255,255,255,0.25); border-radius: 20px;
+            position: relative; overflow: hidden; margin-top: 10px;
+        }
+        .budget-progress {
+            height: 100%; background: white; border-radius: 20px; width: 0%;
+            transition: width 0.4s ease, background 0.2s;
+            max-width: 100%;
+        }
+        .budget-progress.over-budget {
+            background: var(--danger);
+        }
+        .budget-text {
+            position: absolute; right: 0; top: -24px; font-size: 14px; font-weight: 500; color: white;
+        }
+
+        .main-content { display: grid; grid-template-columns: 360px 1fr 440px; gap: 24px; align-items: start; }
+
+        /* ЛЕВАЯ КОЛОНКА */
+        .tasks-section {
+            background: var(--card-bg); border-radius: 24px; padding: 22px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.02); border: 1px solid var(--border);
+        }
+        .brief-header { display: flex; gap: 10px; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px; align-items: center; }
+        .brief-tab { background: none; border: none; padding: 8px 16px; font-weight: 600; color: #7f8c8d; cursor: pointer; border-radius: 30px; transition: 0.2s; }
+        .brief-tab.active { background: var(--primary); color: white; }
+        .letter-slider { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+        .letter-slider button { background: none; border: none; font-size: 18px; color: var(--primary); cursor: pointer; }
+        .letter-slider span { font-size: 14px; font-weight: 600; color: var(--dark); }
+
+        .brief-content {
+            background: var(--letter-bg); border-radius: 24px; padding: 20px;
+            margin-bottom: 20px; border: 1px solid var(--letter-border); min-height: 200px;
+            overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.02);
+        }
+        .client-letter {
+            display: flex; flex-direction: column; gap: 12px;
+        }
+        .letter-header {
+            display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--border); padding-bottom: 10px;
+        }
+        .letter-icon {
+            width: 40px; height: 40px; background: var(--gradient); border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; color: white;
+        }
+        .letter-from-block {
+            flex: 1;
+        }
+        .letter-from-name {
+            font-weight: 700; color: var(--primary); font-size: 15px;
+        }
+        .letter-date {
+            font-size: 11px; color: #888;
+        }
+        .letter-subject {
+            font-weight: 600; font-size: 16px; color: var(--dark); margin: 5px 0 5px 50px;
+            padding-left: 10px; border-left: 3px solid var(--primary);
+        }
+        .letter-body {
+            font-size: 14px; line-height: 1.6; color: var(--text); margin-left: 50px;
+            background: var(--metric-bg); padding: 15px; border-radius: 16px;
+        }
+        .letter-signature {
+            margin-top: 10px; font-style: italic; color: #888; text-align: right;
+            border-top: 1px dashed var(--border); padding-top: 10px;
+        }
+
+        .task-header {
+            font-weight: 700; font-size: 14px; color: var(--dark); margin: 15px 0 5px;
+            display: flex; align-items: center; gap: 5px;
+        }
+        .task-header i { color: var(--primary); }
+
+        #tasks-container { max-height: 380px; overflow-y: auto; margin-bottom: 18px; padding-right: 5px; }
+        .task-item {
+            display: flex; align-items: center; gap: 12px; background: #f9f9fc;
+            border-radius: 16px; padding: 14px 16px; margin: 10px 0; border: 1px solid #edf2f7;
+            background-color: var(--card-bg);
+            color: var(--text);
+        }
+        .task-item:hover { background: #f0f7ff; border-color: var(--primary); }
+        .task-item.completed { background: #e2f7e9; border-color: var(--primary); opacity: 0.9; color: #1a3a2a; }
+        body.dark-theme .task-item.completed { background: #1e4a2a; color: #e0e0e0; border-color: #00d46a; }
+        .task-item.completed .task-text { text-decoration: line-through; }
+        .task-item i { color: var(--primary); font-size: 20px; min-width: 28px; }
+        .task-text { flex: 1; font-size: 14px; font-weight: 500; }
+
+        /* Трекер выполнения с прогресс-барами */
+        .task-tracker {
+            background: var(--metric-bg); border-radius: 16px; padding: 15px; margin-bottom: 15px;
+            border: 1px solid var(--border);
+        }
+        .tracker-item {
+            margin-bottom: 15px;
+        }
+        .tracker-header {
+            display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px;
+        }
+        .tracker-label {
+            font-weight: 600; color: var(--dark);
+        }
+        .tracker-values {
+            color: var(--primary);
+        }
+        .progress-bar-container {
+            width: 100%; height: 8px; background: var(--progress-bg); border-radius: 20px; overflow: hidden;
+        }
+        .progress-bar-fill {
+            height: 100%; width: 0%; transition: width 0.3s;
+        }
+        .progress-bar-fill.success { background: var(--progress-success); }
+        .progress-bar-fill.fail { background: var(--progress-fail); }
+
+        .task-actions { display: flex; flex-direction: column; gap: 12px; margin-top: 10px; }
+
+        /* ЦЕНТР */
+        .workspace { display: flex; flex-direction: column; gap: 20px; }
+        .mediaplan-container {
+            background: var(--card-bg); border-radius: 24px; padding: 22px;
+            border: 1px solid var(--border); box-shadow: 0 4px 16px rgba(0,0,0,0.02);
+        }
+        .mediaplan-header {
+            display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;
+            cursor: pointer;
+        }
+        .mediaplan-header h3 { font-size: 18px; color: var(--dark); display: flex; align-items: center; gap: 8px; }
+        .collapse-btn {
+            background: none; border: none; font-size: 20px; color: var(--primary); cursor: pointer;
+        }
+        .mediaplan-summary {
+            font-size: 14px; color: var(--dark); background: var(--metric-bg); padding: 4px 10px;
+            border-radius: 30px; margin-left: 15px;
+        }
+        .mediaplan-content {
+            transition: max-height 0.3s ease, opacity 0.3s ease, margin 0.3s;
+            overflow: hidden;
+        }
+        .mediaplan-content.collapsed {
+            max-height: 0; opacity: 0; margin: 0; pointer-events: none;
+        }
+        .mediaplan { min-height: 280px; background: #fafcff; border-radius: 20px; padding: 18px; background-color: var(--card-bg); }
+        .mediaplan.with-bg-image { background-image: radial-gradient(circle at 10% 20%, rgba(0,185,86,0.02) 0%, transparent 30%); }
+        .empty-drop { color: #9aa9b9; text-align: center; padding: 50px 0; font-size: 16px; font-style: italic; }
+
+        .mediaplan-sections { display: flex; flex-direction: column; gap: 20px; }
+        .mediaplan-section { background: var(--card-bg); border-radius: 16px; padding: 16px; border: 1px solid #eef2f6; }
+        .mediaplan-section-title {
+            font-weight: 700; color: var(--primary); margin-bottom: 12px; font-size: 15px;
+            display: flex; align-items: center; gap: 8px; letter-spacing: -0.2px;
+        }
+        .mediaplan-section .platforms-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px;
+        }
+
+        /* КАРТОЧКА ПЛОЩАДКИ В МЕДИАПЛАНЕ */
+        .mediaplan .platform {
+            background: var(--card-bg); border: 1px solid #edf2f7; border-radius: 16px;
+            padding: 14px; position: relative; overflow: hidden;
+            transition: 0.2s; box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+            cursor: default;
+        }
+        .mediaplan .platform::before {
+            content: ''; position: absolute; top: 0; left: 0; height: 100%;
+            width: var(--percentage, 0%); background: rgba(0,185,86,0.06);
+            z-index: 0; transition: width 0.3s; border-radius: 16px;
+        }
+        .mediaplan .platform > * { position: relative; z-index: 2; }
+        .mediaplan .platform:hover { border-color: var(--primary); box-shadow: 0 8px 18px rgba(0,185,86,0.08); }
+        .mediaplan .platform-header {
+            display: flex; align-items: center; gap: 6px; margin-bottom: 8px;
+        }
+        .mediaplan .platform-header i:first-child { font-size: 18px; color: var(--primary); }
+        .mediaplan .platform-header span { font-weight: 700; font-size: 14px; color: var(--dark); }
+        .mediaplan .remove-btn {
+            position: absolute; top: 8px; right: 8px; background: var(--danger);
+            color: white; border: none; width: 22px; height: 22px; border-radius: 50%;
+            font-weight: bold; font-size: 14px; line-height: 1; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; opacity: 0.8;
+            transition: 0.2s; z-index: 5;
+        }
+        .mediaplan .platform:hover .remove-btn { opacity: 1; }
+        .mediaplan .platform-metrics {
+            display: flex; flex-wrap: wrap; gap: 6px 8px; margin: 8px 0 8px;
+            font-size: 11px;
+        }
+        .mediaplan .platform-metrics span {
+            background: #f0f4f9; padding: 4px 8px; border-radius: 30px;
+            display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;
+            color: #2c3e50;
+        }
+        body.dark-theme .mediaplan .platform-metrics span {
+            background: #3a4a5a; color: #e0e0e0;
+        }
+        .mediaplan .platform-metrics i { font-size: 10px; color: var(--primary); }
+        .mediaplan .budget-control {
+            display: flex; align-items: center; gap: 6px; margin-top: 6px;
+        }
+        .mediaplan .budget-slider { flex: 1; height: 4px; accent-color: var(--primary); }
+        .mediaplan .budget-input {
+            width: 80px; padding: 4px 6px; border: 1px solid var(--border);
+            border-radius: 30px; font-size: 11px; text-align: right; font-weight: 500;
+            background: var(--card-bg); color: var(--text);
+        }
+        .mediaplan .budget-slider-value {
+            display: flex; justify-content: space-between; font-size: 10px; color: #6f8a9f; margin-top: 2px;
+        }
+        .mediaplan .budget-slider-value span:first-child { font-weight: 600; color: var(--dark); }
+
+        /* ПЛОЩАДКИ (доступные) */
+        .platforms-container {
+            background: var(--card-bg); border-radius: 24px; padding: 22px;
+            border: 1px solid var(--border); max-height: 520px; overflow-y: auto;
+        }
+        .platforms-header {
+            display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;
+        }
+        .filter-dropdown {
+            position: relative;
+            display: inline-block;
+        }
+        .filter-btn {
+            background: var(--primary); color: white; border: none;
+            width: 40px; height: 40px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; font-size: 20px;
+        }
+        .filter-menu {
+            display: none;
+            position: absolute; right: 0; top: 45px;
+            background: var(--card-bg); border: 1px solid var(--border);
+            border-radius: 20px; padding: 10px; z-index: 100;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            min-width: 180px;
+        }
+        .filter-menu.show { display: block; }
+        .filter-menu button {
+            display: block; width: 100%; text-align: left;
+            padding: 8px 12px; background: none; border: none;
+            color: var(--text); cursor: pointer; border-radius: 10px;
+        }
+        .filter-menu button:hover { background: var(--metric-bg); }
+        .filter-menu button.active { background: var(--primary); color: white; }
+
+        .section-tabs { display: flex; flex-wrap: wrap; gap: 10px; margin: 15px 0 20px; }
+        .section-tab {
+            padding: 8px 20px; background: var(--tab-bg); border: 2px solid var(--primary); border-radius: 40px;
+            font-size: 14px; font-weight: 500; cursor: pointer; color: var(--primary); transition: 0.2s;
+        }
+        .section-tab.active { background: var(--primary); color: white; border-color: var(--primary); }
+        body.dark-theme .section-tab { background: transparent; color: var(--primary); }
+        body.dark-theme .section-tab.active { background: var(--primary); color: white; }
+
+        .section-group { margin-bottom: 25px; }
+        .section-group-title {
+            font-weight: 700; font-size: 18px; color: var(--dark); margin-bottom: 15px;
+            padding-bottom: 5px; border-bottom: 2px solid var(--primary);
+            display: flex; align-items: center; gap: 10px;
+        }
+        .section-group-title i { color: var(--primary); }
+        .platforms-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+
+        .platform {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 20px;
+            padding: 16px; cursor: grab; transition: 0.2s; position: relative;
+            overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+            color: var(--text);
+        }
+        .platform::before {
+            content: ''; position: absolute; top: 0; left: 0; height: 100%;
+            width: var(--percentage, 0%); background: rgba(0,185,86,0.1);
+            z-index: 0; transition: width 0.3s; border-radius: 20px;
+        }
+        .platform > * { position: relative; z-index: 2; }
+        .platform:hover { transform: translateY(-3px); border-color: var(--primary); box-shadow: 0 12px 22px rgba(0,185,86,0.1); }
+        .platform-header {
+            display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+        }
+        .platform-header i:first-child { font-size: 22px; color: var(--primary); }
+        .platform-header span { font-weight: 700; font-size: 15px; color: var(--dark); }
+        .platform-info-btn { color: #8a9bb5; cursor: pointer; font-size: 16px; margin-left: 5px; }
+        .platform-info-btn:hover { color: var(--primary); }
+        .quick-add-btn {
+            background: var(--primary); color: white; border: none;
+            width: 28px; height: 28px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; font-size: 18px; margin-left: auto;
+            flex-shrink: 0;
+        }
+        .quick-add-btn:hover { background: var(--primary-dark); transform: scale(1.1); }
+        .platform small { display: block; font-size: 12px; color: #6b7f99; margin: 4px 0; }
+        body.dark-theme .platform small { color: #b0c4de; }
+
+        /* ПРАВАЯ ПАНЕЛЬ МЕТРИКИ И ГРАФИК */
+        .stats-section { display: flex; flex-direction: column; gap: 0; background: var(--card-bg); border-radius: 24px; border: 1px solid var(--border); overflow: hidden; }
+        .stats-tabs {
+            display: flex; border-bottom: 1px solid var(--border);
+        }
+        .stats-tab {
+            flex: 1; text-align: center; padding: 12px; cursor: pointer;
+            background: var(--card-bg); border: none; font-weight: 600;
+            color: var(--dark); transition: 0.2s;
+        }
+        .stats-tab.active {
+            background: var(--primary); color: white;
+        }
+        .stats-content {
+            padding: 22px;
+            min-height: 400px;
+        }
+        .metrics-container, .visualization-container {
+            display: block;
+        }
+        .visualization-container {
+            display: none;
+        }
+        .stats-content.show-metrics .metrics-container { display: block; }
+        .stats-content.show-metrics .visualization-container { display: none; }
+        .stats-content.show-chart .metrics-container { display: none; }
+        .stats-content.show-chart .visualization-container { display: block; }
+
+        .metrics-container h4 {
+            font-size: 16px; margin: 12px 0 8px; color: var(--dark);
+            border-bottom: 1px dashed var(--border); padding-bottom: 5px;
+        }
+        .metrics-row {
+            display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 5px;
+        }
+        .metric-card {
+            background: var(--metric-bg); border-radius: 14px; padding: 10px 8px;
+            min-width: 90px; text-align: center; border: 1px solid #eef3f8;
+            transition: 0.2s, box-shadow 0.3s; flex: 1 1 100px; max-width: 110px;
+            color: var(--text);
+        }
+        .metric-card.highlight {
+            background: linear-gradient(145deg, rgba(0,185,86,0.2), rgba(115,25,130,0.2));
+            color: var(--text);
+            border: 1px solid var(--primary);
+            animation: soft-shine 2s infinite;
+        }
+        @keyframes soft-shine {
+            0% { filter: brightness(1); }
+            50% { filter: brightness(1.1); }
+            100% { filter: brightness(1); }
+        }
+        .metric-card i { font-size: 14px; color: var(--primary); margin-bottom: 2px; }
+        .metric-card.highlight i { color: var(--primary); }
+        .metric-value {
+            font-weight: 700; font-size: 13px; color: var(--dark);
+            display: block; margin-bottom: 2px;
+        }
+        .metric-card.highlight .metric-value { color: var(--dark); }
+        .metric-label {
+            font-size: 8px; color: #6b7f99; text-transform: uppercase;
+            letter-spacing: 0.2px;
+        }
+        .metric-card.highlight .metric-label { color: #6b7f99; }
+        body.dark-theme .metric-label { color: #b0c4de; }
+        .visualization-section { text-align: center; }
+        .visualization-section h4 { margin-bottom: 15px; font-size: 16px; color: var(--dark); }
+        .bar-chart { height: 300px; position: relative; }
+        canvas { max-height: 300px; width: 100% !important; }
+
+        /* МОДАЛКИ */
+        .modal {
+            display: none; position: fixed; z-index: 9999; left: 0; top: 0;
+            width: 100%; height: 100%; background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(4px); align-items: center; justify-content: center;
+        }
+        .modal-content {
+            background: var(--card-bg); border-radius: 36px; padding: 30px;
+            max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.3); animation: modalFade 0.3s;
+            color: var(--text);
+        }
+        @keyframes modalFade { from { opacity:0; transform:scale(0.9); } to { opacity:1; transform:scale(1); } }
+        .modal-content h3 { font-size:24px; color:var(--primary); margin-bottom:20px; display:flex; align-items:center; gap:10px; }
+        .modal-content p { margin:15px 0; line-height:1.6; }
+        .close { float:right; font-size:28px; font-weight:300; cursor:pointer; color:#aaa; }
+        .notification {
+            position:fixed; bottom:30px; right:30px; background:var(--primary); color:white;
+            padding:16px 28px; border-radius:60px; box-shadow:0 10px 30px rgba(0,185,86,0.3);
+            z-index:10000; animation:slideIn 0.3s;
+        }
+        .notification.error { background:var(--danger); }
+        @keyframes slideIn { from { transform:translateX(100%); opacity:0; } to { transform:translateX(0); opacity:1; } }
+
+        .platform-format-image {
+            background: #f0f0f0;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            color: #aaa;
+            margin-top: 15px;
+            border: 2px dashed #ccc;
+        }
+
+        /* Праздничное окно */
+        .confetti {
+            position: absolute; width: 10px; height: 10px; background: gold;
+            animation: confetti-fall 3s linear infinite;
+        }
+        @keyframes confetti-fall {
+            0% { transform: translateY(-100px) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(300px) rotate(720deg); opacity: 0; }
+        }
+        .success-content {
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .success-content h2 { font-size: 32px; margin-bottom: 20px; }
+        .success-content .btn { margin-top: 20px; }
+
+        /* Адаптивность шрифтов */
+        @media (max-width: 1600px) {
+            body { font-size: 15px; }
+            .game-header h1 { font-size: 24px; }
+            .metric-value { font-size: 12px; }
+            .metric-label { font-size: 7px; }
+            .task-text { font-size: 13px; }
+        }
+        @media (max-width: 1366px) {
+            body { font-size: 14px; }
+            .game-header h1 { font-size: 22px; }
+            .metric-card { padding: 8px; }
+            .task-item { padding: 12px; }
+        }
+        @media (max-width: 1280px) {
+            .main-content { grid-template-columns: 320px 1fr 400px; gap: 16px; }
+        }
+    </style>
+</head>
+<body>
+<div class="game-container">
+    <div class="game-header">
+        <div class="header-row">
+            <div class="header-left">
+                <h1>DIGITAL PLANNING SIMULATOR</h1>
+                <button class="theme-toggle" id="theme-toggle"><i class="fas fa-moon"></i> Тёмная тема</button>
+            </div>
+            <div class="header-right">
+                <div class="logos">
+                    <img class="logo megafon" alt="Мегафон">
+                    <img class="logo mig" alt="MIG">
+                </div>
+            </div>
+        </div>
+        <div class="budget-progress-container">
+            <div class="budget-progress" id="budget-progress-bar" style="width:0%"></div>
+            <div class="budget-text" id="budget-text">Бюджет: 0 / 12 000 000 ₽</div>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <!-- ЛЕВАЯ КОЛОНКА -->
+        <div class="tasks-section">
+            <div class="brief-header">
+                <button class="brief-tab active" id="brief-tab-btn">Бриф</button>
+                <button class="brief-tab" id="letters-tab-btn">Письма</button>
+                <div class="letter-slider" id="letter-slider" style="display: none;">
+                    <button id="prev-letter"><i class="fas fa-chevron-left"></i></button>
+                    <span id="letter-counter">0/0</span>
+                    <button id="next-letter"><i class="fas fa-chevron-right"></i></button>
+                </div>
+            </div>
+            <div class="brief-content" id="brief-content">
+                <p id="brief-description">Запуск digital-кампании Мегафон. Бюджет может меняться. KPI зависят от выбранного уровня сложности.</p>
+            </div>
+            <div class="task-header"><i class="fas fa-star"></i> Текущая задача:</div>
+            <div id="tasks-container" class="tab-content active"></div>
+            <!-- Трекер выполнения с прогресс-барами -->
+            <div id="task-tracker" class="task-tracker"></div>
+            <div class="task-actions">
+                <button id="check-task" class="btn btn-primary"><i class="fas fa-paper-plane"></i> Отправить на согласование</button>
+                <button id="reset-plan" class="btn btn-secondary"><i class="fas fa-undo-alt"></i> Очистить</button>
+                <button id="show-stats-info" class="btn btn-secondary"><i class="fas fa-info-circle"></i> Термины</button>
+            </div>
+        </div>
+
+        <!-- ЦЕНТР -->
+        <div class="workspace">
+            <div class="mediaplan-container">
+                <div class="mediaplan-header" id="mediaplan-header">
+                    <h3><i class="fas fa-clipboard-list" style="color: var(--primary);"></i> Ваш медиаплан <span class="mediaplan-summary" id="mediaplan-summary">0 площадок, 0 ₽</span></h3>
+                    <button class="collapse-btn" id="collapse-mediaplan" title="Свернуть/развернуть"><i class="fas fa-chevron-up"></i></button>
+                </div>
+                <div class="mediaplan-content" id="mediaplan-content">
+                    <div class="mediaplan with-bg-image" id="mediaplan">
+                        <div class="empty-drop" id="mediaplan-empty">Перетащите площадки сюда</div>
+                    </div>
+                </div>
+            </div>
+            <div class="platforms-container">
+                <div class="platforms-header">
+                    <h3><i class="fas fa-th" style="color: var(--primary);"></i> Доступные площадки</h3>
+                    <div class="filter-dropdown">
+                        <button class="filter-btn" id="filter-toggle"><i class="fas fa-filter"></i></button>
+                        <div class="filter-menu" id="filter-menu">
+                            <button data-sort="default">По умолчанию</button>
+                            <button data-sort="cpm">Сначала дешёвый охват (CPM)</button>
+                            <button data-sort="ctr">Сначала кликабельные (CTR)</button>
+                            <button data-sort="cpa">Сначала конверсионные (CPA)</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="section-tabs" id="section-tabs">
+                    <button class="section-tab active" data-section="all">Все</button>
+                    <button class="section-tab" data-section="Социальные сети">Соц.сети</button>
+                    <button class="section-tab" data-section="Баннерная реклама">Баннеры</button>
+                    <button class="section-tab" data-section="Видео">Видео</button>
+                    <button class="section-tab" data-section="Аудио">Аудио</button>
+                </div>
+                <div id="platforms-content"></div>
+            </div>
+        </div>
+
+        <!-- ПРАВАЯ ПАНЕЛЬ -->
+        <div class="stats-section">
+            <div class="stats-tabs">
+                <button class="stats-tab active" id="metrics-tab">Метрики</button>
+                <button class="stats-tab" id="chart-tab">График</button>
+            </div>
+            <div class="stats-content show-metrics" id="stats-content">
+                <div class="metrics-container">
+                    <h4><i class="fas fa-chart-bar" style="color: var(--primary);"></i> Количественные</h4>
+                    <div class="metrics-row" id="key-metrics"></div>
+                    <h4><i class="fas fa-tags" style="color: var(--primary);"></i> Ценовые</h4>
+                    <div class="metrics-row" id="price-metrics"></div>
+                    <h4><i class="fas fa-concierge-bell" style="color: var(--primary);"></i> Конверсионные</h4>
+                    <div class="metrics-row" id="postclick-metrics"></div>
+                </div>
+                <div class="visualization-container">
+                    <div class="visualization-section">
+                        <h4><i class="fas fa-pie-chart" style="color: var(--primary);"></i> Сплит по разделам</h4>
+                        <div class="bar-chart"><canvas id="section-canvas"></canvas></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- МОДАЛКИ -->
+<div id="tutorial-modal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <h3><i class="fas fa-graduation-cap"></i> Добро пожаловать!</h3>
+        <p>Выберите уровень сложности:</p>
+        <div style="display: flex; gap: 15px; justify-content: center; margin: 20px 0;">
+            <button id="difficulty-junior" class="btn btn-secondary">Junior</button>
+            <button id="difficulty-senior" class="btn btn-secondary">Senior</button>
+        </div>
+        <div id="difficulty-description" style="text-align: center; min-height: 60px; margin-bottom: 20px; font-style: italic; color: var(--dark);">
+            Нажмите на уровень, чтобы увидеть описание
+        </div>
+        <p>Перетаскивайте площадки, настраивайте бюджет, выполняйте задачи.</p>
+        <button id="skip-tutorial" class="btn btn-primary" disabled>Начать игру</button>
+    </div>
+</div>
+<div id="new-task-modal" class="modal"><div class="modal-content"><span class="close">&times;</span><h3><i class="fas fa-envelope-open-text"></i> Письмо</h3><div id="new-task-content"></div><button id="close-task-modal" class="btn btn-primary">Понял</button></div></div>
+<div id="success-modal" class="modal">
+    <div class="modal-content success-content">
+        <span class="close">&times;</span>
+        <div style="position: relative; min-height: 200px;">
+            <div class="confetti" style="left:10%; animation-delay:0s;"></div>
+            <div class="confetti" style="left:30%; animation-delay:0.5s;"></div>
+            <div class="confetti" style="left:50%; animation-delay:1s;"></div>
+            <div class="confetti" style="left:70%; animation-delay:1.5s;"></div>
+            <div class="confetti" style="left:90%; animation-delay:2s;"></div>
+            <h2><i class="fas fa-trophy" style="color: gold;"></i> Поздравляем!</h2>
+            <p style="font-size: 18px;">Вы успешно завершили все задания!</p>
+            <p style="margin-top: 20px;">Вы настоящий мастер медиапланирования!</p>
+            <button id="play-again-btn" class="btn btn-primary" style="margin-top: 20px;"><i class="fas fa-redo"></i> Играть снова</button>
+        </div>
+    </div>
+</div>
+<div id="warning-modal" class="modal"><div class="modal-content"><span class="close">&times;</span><p id="warning-text"></p></div></div>
+<div id="platform-info-modal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <h3 id="platform-info-title"></h3>
+        <div id="platform-info-content"></div>
+        <div class="platform-format-image" id="platform-format-image">
+            <i class="fas fa-image" style="font-size: 40px; color: #ccc;"></i>
+            <p>Здесь будет пример формата</p>
+        </div>
+        <button id="add-platform-from-info" class="btn btn-primary" style="margin-top:15px;"><i class="fas fa-plus"></i> Выбрать площадку</button>
+    </div>
+</div>
+<div id="stats-info-modal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <h3><i class="fas fa-book-open"></i> Термины</h3>
+        <p><strong><i class="fas fa-tag" style="color: var(--primary);"></i> CPM</strong> — стоимость 1000 показов.</p>
+        <p><strong><i class="fas fa-percent" style="color: var(--primary);"></i> CTR</strong> — кликабельность.</p>
+        <p><strong><i class="fas fa-chart-line" style="color: var(--primary);"></i> CPT</strong> — стоимость 1000 охвата.</p>
+        <p><strong><i class="fas fa-redo" style="color: var(--primary);"></i> Частота</strong> — среднее число показов на пользователя.</p>
+        <p><strong><i class="fas fa-chart-pie" style="color: var(--primary);"></i> PI</strong> — индекс покупок.</p>
+        <p><strong><i class="fas fa-money-bill-wave" style="color: var(--primary);"></i> CPA</strong> — стоимость конверсии.</p>
+        <p><strong><i class="fas fa-coins" style="color: var(--primary);"></i> CPC</strong> — стоимость клика.</p>
+        <p><strong><i class="fas fa-exchange-alt" style="color: var(--primary);"></i> CR</strong> — конверсия.</p>
+        <button id="understand-btn" class="btn btn-primary">Понятно</button>
+    </div>
+</div>
+
+<script>
+    (function() {
+        // ========== ДАННЫЕ ПЛОЩАДОК ==========
+        const platforms = [
+            { id:0, name:"vk.com", section:"Социальные сети", platform:"Web+Mobile", format:"Соц.сети", CPM:98.33, CTR:0.0021173*100, VTR:0, BR:35, PI:48, CPA:8294, budgetLimit:3000000, frequency:3, icon:"fab fa-vk", description:"VK реклама. Аудитория 18–35 лет." },
+            { id:1, name:"MyTarget", section:"Баннерная реклама", platform:"Web+Mobile", format:"Баннер", CPM:83.63, CTR:0.003979*100, VTR:0, BR:35, PI:49, CPA:13578, budgetLimit:3000000, frequency:3, icon:"fas fa-ad", description:"MyTarget баннеры, таргетинг по интересам." },
+            { id:2, name:"Yandex.ru//Display", section:"Баннерная реклама", platform:"Web+Mobile", format:"РСЯ", CPM:34.60, CTR:0.003417*100, VTR:0, BR:35, PI:65, CPA:3350, budgetLimit:3000000, frequency:4, icon:"fab fa-yandex", description:"Яндекс Дисплей, охватная сеть." },
+            { id:3, name:"Ozon.ru", section:"Баннерная реклама", platform:"Web+Mobile", format:"Баннер", CPM:106.49, CTR:0.000981*100, VTR:0, BR:43, PI:50, CPA:12274, budgetLimit:2000000, frequency:4, icon:"fas fa-shopping-cart", description:"Ozon баннеры на главной." },
+            { id:4, name:"Avito.ru", section:"Баннерная реклама", platform:"Web+Mobile", format:"Баннер", CPM:19.28, CTR:0.001093*100, VTR:0, BR:28, PI:64, CPA:8289, budgetLimit:2000000, frequency:3, icon:"fas fa-ad", description:"Avito, высокая вовлечённость." },
+            { id:5, name:"Rambler&Co//PMP", section:"Баннерная реклама", platform:"Web+Mobile", format:"PMP", CPM:135.11, CTR:0.001396*100, VTR:0, BR:36, PI:54, CPA:3123, budgetLimit:2000000, frequency:3, icon:"fas fa-ad", description:"Rambler PMP, премиум размещение." },
+            { id:6, name:"Digital Alliance Videonetwork", section:"Видео", platform:"SmartTV", format:"OLV", CPM:234.41, CTR:0.010221*100, VTR:94.69, BR:46, PI:114, CPA:3275, budgetLimit:1000000, frequency:5, icon:"fas fa-tv", description:"Digital Alliance видео на SmartTV." },
+            { id:7, name:"RBC.ru", section:"Баннерная реклама", platform:"Web+Mobile", format:"Баннер", CPM:391.61, CTR:0.001278*100, VTR:0, BR:55, PI:54, CPA:70650, budgetLimit:1000000, frequency:4, icon:"fas fa-newspaper", description:"RBC, деловая аудитория." },
+            { id:8, name:"AstraLab", section:"Баннерная реклама", platform:"Web+Mobile", format:"Баннер", CPM:338.96, CTR:0.007496*100, VTR:0, BR:16, PI:76, CPA:16145, budgetLimit:1000000, frequency:3, icon:"fas fa-ad", description:"AstraLab, programmatic." },
+            { id:9, name:"Solta", section:"Видео", platform:"Web+Mobile", format:"OLV", CPM:179.95, CTR:0.01542*100, VTR:94.63, BR:43, PI:79, CPA:9549, budgetLimit:2500000, frequency:5, icon:"fas fa-video", description:"Solta video, in-stream." },
+            { id:10, name:"MyTarget Video", section:"Видео", platform:"Web+Mobile", format:"OLV", CPM:164.30, CTR:0.013194*100, VTR:79.73, BR:32, PI:75, CPA:13590, budgetLimit:2000000, frequency:4, icon:"fas fa-video", description:"MyTarget video, соцдем таргетинг." },
+            { id:11, name:"Kommersant.ru", section:"Баннерная реклама", platform:"Web+Mobile", format:"Баннер", CPM:331.61, CTR:0.005474*100, VTR:0, BR:66, PI:56, CPA:2640, budgetLimit:1000000, frequency:3, icon:"fas fa-newspaper", description:"Коммерсант, премиум баннеры." },
+            { id:12, name:"Digital Alliance Banner", section:"Баннерная реклама", platform:"Web+Mobile", format:"Баннер", CPM:79.60, CTR:0.000633*100, VTR:0, BR:39, PI:42, CPA:2903, budgetLimit:1000000, frequency:3, icon:"fas fa-ad", description:"Digital Alliance баннерная сеть." },
+            { id:13, name:"Telegram Ads", section:"Социальные сети", platform:"Mobile", format:"Telegram", CPM:279.77, CTR:0.003843*100, VTR:0, BR:31, PI:36, CPA:12966, budgetLimit:2000000, frequency:4, icon:"fab fa-telegram", description:"Telegram Ads, нативная реклама." },
+            { id:14, name:"RuTube+Premiere", section:"Видео", platform:"SmartTV", format:"OLV", CPM:229.40, CTR:0.024237*100, VTR:85.80, BR:51, PI:56, CPA:8906, budgetLimit:3000000, frequency:6, icon:"fas fa-tv", description:"RuTube, видеоплатформа." },
+            { id:15, name:"Digital Box", section:"Баннерная реклама", platform:"Web+Mobile", format:"Баннер", CPM:176.59, CTR:0.009951*100, VTR:0, BR:37, PI:40, CPA:4370, budgetLimit:2000000, frequency:3, icon:"fas fa-ad", description:"Digital Box баннеры." },
+            { id:16, name:"Digital Box Audio", section:"Аудио", platform:"Web+Mobile", format:"Аудио", CPM:207.56, CTR:0.01507*100, VTR:0, BR:39, PI:39, CPA:6581, budgetLimit:2000000, frequency:4, icon:"fas fa-headphones", description:"Digital Box аудиореклама." },
+            { id:17, name:"Tass.ru", section:"Баннерная реклама", platform:"Web+Mobile", format:"Баннер", CPM:493.52, CTR:0.000964*100, VTR:0, BR:48, PI:74, CPA:203390, budgetLimit:1000000, frequency:3, icon:"fas fa-newspaper", description:"TASS, новостной сайт." },
+            { id:18, name:"Wi-Fi.ru", section:"Баннерная реклама", platform:"Web+Mobile", format:"Баннер", CPM:146.97, CTR:0.012977*100, VTR:0, BR:19, PI:42, CPA:11413, budgetLimit:500000, frequency:3, icon:"fas fa-wifi", description:"Wi-Fi.ru, развлекательный портал." },
+            { id:19, name:"Playground.ru", section:"Баннерная реклама", platform:"Web+Mobile", format:"Баннер", CPM:155.40, CTR:0.008203*100, VTR:0, BR:33, PI:41, CPA:1554, budgetLimit:1000000, frequency:3, icon:"fas fa-gamepad", description:"Playground, игровое сообщество." },
+            { id:20, name:"Vedomosti.ru", section:"Баннерная реклама", platform:"Web+Mobile", format:"Баннер", CPM:471.42, CTR:0.005800*100, VTR:0, BR:70, PI:60, CPA:11438, budgetLimit:1000000, frequency:4, icon:"fas fa-newspaper", description:"Ведомости, деловые новости." },
+            { id:21, name:"Native Rent", section:"Баннерная реклама", platform:"Web+Mobile", format:"Native", CPM:1107.69, CTR:0.03187*100, VTR:0, BR:35, PI:57, CPA:149780, budgetLimit:500000, frequency:3, icon:"fas fa-ad", description:"Native Rent, нативная реклама." },
+            { id:22, name:"Digital Box Video", section:"Видео", platform:"Web+Mobile", format:"OLV", CPM:243.64, CTR:0.03007*100, VTR:98.86, BR:40, PI:36, CPA:5540, budgetLimit:1500000, frequency:5, icon:"fas fa-video", description:"Digital Box video, in-page." },
+            { id:23, name:"Soloway", section:"Видео", platform:"Web+Mobile", format:"OLV", CPM:300, CTR:0.00784*100, VTR:58.15, BR:37, PI:62, CPA:6919, budgetLimit:1500000, frequency:4, icon:"fas fa-video", description:"Soloway, видеосеть." }
+        ];
+
+        // ========== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ==========
+        let TOTAL_BUDGET = 12000000; // стартовый 12 млн
+        let selectedPlatforms = [];
+        let completedTasks = [];
+        let currentTaskIndex = 0;
+        let currentBrief = "megafon";
+        let selectedSection = 'all';
+        let previousCPA = 0;
+        let sectionChart = null;
+        let currentLetterIndex = 0;
+        let lettersUnlocked = new Array(8).fill(false);
+        let mediaplanCollapsed = false;
+        let difficulty = null;
+        let currentSort = 'default';
+
+        // ========== ЗАДАЧИ С ЯВНЫМИ ЦЕЛЯМИ ==========
+        const tasksJunior = [
+            { id:1, description:"Реализовать бюджет 12 млн ₽ + охват ≥ 22 млн", condition: (stats) => stats.totalSpent >= TOTAL_BUDGET && stats.reach >= 22000000, onComplete: (stats) => { TOTAL_BUDGET = 24000000; updateBudgetProgress(); showNotification(`Бюджет увеличен до 24 млн ₽`, 'success'); }, icon:"fas fa-wallet", metrics: ['totalSpent', 'reach'], targets: { totalSpent: 12000000, reach: 22000000 } },
+            { id:2, description:"Охват ≥ 50 млн (новый бюджет)", condition: (stats) => stats.totalSpent >= TOTAL_BUDGET && stats.reach >= 50000000, onComplete: ()=>{}, icon:"fas fa-users", metrics: ['reach'], targets: { reach: 50000000 } },
+            { id:3, description:"Частота ≥ 4.0, CPM ≤ 95, CPT ≤ 450", condition: (stats) => stats.avgFrequency >= 4.0 && stats.avgCPM <= 95 && stats.avgCPT <= 450, icon:"fas fa-sliders-h", metrics: ['avgFrequency', 'avgCPM', 'avgCPT'], targets: { avgFrequency: 4.0, avgCPM: 95, avgCPT: 450 } },
+            { id:4, description:"CTR ≥ 0.35% и клики ≥ 900 000", condition: (stats) => stats.avgCTR >= 0.35 && stats.totalClicks >= 900000, icon:"fas fa-mouse-pointer", metrics: ['avgCTR', 'totalClicks'], targets: { avgCTR: 0.35, totalClicks: 900000 } },
+            { id:5, description:"Доля OLV 30–45%", condition: (stats) => stats.olvShare >= 30 && stats.olvShare <= 45, icon:"fas fa-video", metrics: ['olvShare'], targets: { olvShare_min: 30, olvShare_max: 45 } },
+            { id:6, description:"Визиты ≥ 600 000 и PI ≥ 50%", condition: (stats) => stats.totalSessions >= 600000 && stats.avgPI >= 50, icon:"fas fa-chart-line", metrics: ['totalSessions', 'avgPI'], targets: { totalSessions: 600000, avgPI: 50 } },
+            { id:7, description:"Исключить VK", condition: (stats) => !selectedPlatforms.some(p => p.name === 'vk.com'), icon:"fas fa-ban", metrics: [], targets: {} },
+            { id:8, description:"Конверсии ≥ 3400", condition: (stats) => stats.totalConversions >= 3400, onComplete: (stats) => { previousCPA = stats.avgCPA; }, icon:"fas fa-bullseye", metrics: ['totalConversions'], targets: { totalConversions: 3400 } },
+            { id:9, description:"Срезка бюджета до 18 млн, CPA улучшить на 10%", condition: (stats) => stats.totalSpent >= TOTAL_BUDGET && stats.avgCPA <= Math.max(previousCPA * 0.90, 4500), onStart: () => { TOTAL_BUDGET = 18000000; updateBudgetProgress(); showNotification(`Бюджет урезан до 18 млн ₽`, 'error'); }, icon:"fas fa-chart-pie", metrics: ['avgCPA'], targets: { avgCPA: (prev) => Math.max(prev * 0.9, 4500) } }
+        ];
+
+        const tasksSenior = [
+            { id:1, description:"Реализовать бюджет 12 млн ₽ + охват ≥ 30 млн", condition: (stats) => stats.totalSpent >= TOTAL_BUDGET && stats.reach >= 30000000, onComplete: (stats) => { TOTAL_BUDGET = 24000000; updateBudgetProgress(); showNotification(`Бюджет увеличен до 24 млн ₽`, 'success'); }, icon:"fas fa-wallet", metrics: ['totalSpent', 'reach'], targets: { totalSpent: 12000000, reach: 30000000 } },
+            { id:2, description:"Охват ≥ 50 млн (без VK и Яндекса)", condition: (stats) => stats.totalSpent >= TOTAL_BUDGET && stats.reach >= 50000000, onComplete: ()=>{}, icon:"fas fa-users", metrics: ['reach'], targets: { reach: 50000000 } },
+            { id:3, description:"Частота ≥ 4.2, CPM ≤ 105, CPT ≤ 470", condition: (stats) => stats.avgFrequency >= 4.2 && stats.avgCPM <= 105 && stats.avgCPT <= 470, icon:"fas fa-sliders-h", metrics: ['avgFrequency', 'avgCPM', 'avgCPT'], targets: { avgFrequency: 4.2, avgCPM: 105, avgCPT: 470 } },
+            { id:4, description:"CTR ≥ 0.42% и клики ≥ 950 000", condition: (stats) => stats.avgCTR >= 0.42 && stats.totalClicks >= 950000, icon:"fas fa-mouse-pointer", metrics: ['avgCTR', 'totalClicks'], targets: { avgCTR: 0.42, totalClicks: 950000 } },
+            { id:5, description:"Доля OLV 30–45%", condition: (stats) => stats.olvShare >= 30 && stats.olvShare <= 45, icon:"fas fa-video", metrics: ['olvShare'], targets: { olvShare_min: 30, olvShare_max: 45 } },
+            { id:6, description:"Визиты ≥ 650 000 и PI ≥ 52%", condition: (stats) => stats.totalSessions >= 650000 && stats.avgPI >= 52, icon:"fas fa-chart-line", metrics: ['totalSessions', 'avgPI'], targets: { totalSessions: 650000, avgPI: 52 } },
+            { id:7, description:"Исключить VK и Yandex.ru//Display", condition: (stats) => !selectedPlatforms.some(p => p.name === 'vk.com' || p.name === 'Yandex.ru//Display'), icon:"fas fa-ban", metrics: [], targets: {} },
+            { id:8, description:"Конверсии ≥ 3400", condition: (stats) => stats.totalConversions >= 3400, onComplete: (stats) => { previousCPA = stats.avgCPA; }, icon:"fas fa-bullseye", metrics: ['totalConversions'], targets: { totalConversions: 3400 } },
+            { id:9, description:"Срезка бюджета до 18 млн, CPA улучшить на 12%", condition: (stats) => stats.totalSpent >= TOTAL_BUDGET && stats.avgCPA <= Math.max(previousCPA * 0.88, 4800), onStart: () => { TOTAL_BUDGET = 18000000; updateBudgetProgress(); showNotification(`Бюджет урезан до 18 млн ₽`, 'error'); }, icon:"fas fa-chart-pie", metrics: ['avgCPA'], targets: { avgCPA: (prev) => Math.max(prev * 0.88, 4800) } }
+        ];
+
+        let tasks = tasksJunior; // временно, потом переопределится при выборе
+
+        // ========== ПИСЬМА (первый элемент удалён) ==========
+        const juniorEmails = [
+            { id:2, from: "Директор по маркетингу", subject: "Задание #2: Увеличение бюджета и новые KPI по охвату", body: "Отличные новости: бюджет вырос до 24 миллионов! Менее отличные: теперь охват должен быть не ниже 50 миллионов. Раньше вы кормили районный рынок, теперь — федеральный. Масштаб мышления пропорционален масштабу ответственности.", signature: "С уважением,\nДиректор по маркетингу" },
+            { id:3, from: "Отдел стратегического планирования", subject: "Задание #3: Оптимизация медийных показателей (Частота, CPM, CPT)", body: "Пользователь должен видеть рекламу не менее 4 раз — иначе он просто не запомнит, что вы вообще существуете. При этом тратить больше 95 ₽ за тысячу показов — уже расточительство. Найдите золотую середину между «заметил» и «опять эта реклама».", signature: "С уважением,\nОтдел стратегического планирования" },
+            { id:4, from: "Performance-направление", subject: "Задание #4: Выполнение плана по кликам и CTR", body: "900 тысяч кликов и CTR от 0.35% — это не космос, но достаточно, чтобы не краснеть на квартальном отчёте. Маленький клик для пользователя, большой шаг для нашего KPI-дашборда.", signature: "С уважением,\nPerformance-направление" },
+            { id:5, from: "Дирекция по производству контента", subject: "Задание #5: Квота на видеоформаты (OLV)", body: "Видео дорогое, красивое и работает на запоминаемость бренда. Слишком мало — кампания выглядит дёшево. Слишком много — бюджет улетает со скоростью звука, а финансы начинают присылать грустные письма. Держитесь заданного диапазона в 30-45%.", signature: "С уважением,\nДирекция по производству контента" },
+            { id:6, from: "Отдел веб-аналитики", subject: "Задание #6: План по качественному трафику (Визиты и PI)", body: "600 тысяч визитов — это тот минимум, при котором аналитик перестаёт нервничать и начинает строить гипотезы. Индекс интереса (PI) не ниже 50%: нам не нужны люди, которые приходят, смотрят на главную страницу и уходят разочарованными.", signature: "С уважением,\nОтдел веб-аналитики" },
+            { id:7, from: "Бренд-команда", subject: "Задание #7: Исключение ВКонтакте из медиаплана", body: "Без лишних комментариев: ВКонтакте исключаем из медиаплана немедленно. Это стратегическое решение, принятое на уровне выше нас с вами. Такие вещи лучше не обсуждать, а просто выполнять.", signature: "С уважением,\nБренд-команда" },
+            { id:8, from: "Коммерческий департамент", subject: "Задание #8: План по конверсиям", body: "Отдел продаж снова смотрит на нас с немым вопросом: «Вы там вообще что-то делаете?» 3400 конверсий — это минимум, чтобы этот взгляд превратился хотя бы в нейтральный. Воронка должна приносить лиды, а не просто красиво выглядеть в презентации.", signature: "С уважением,\nКоммерческий департамент" },
+            { id:9, from: "Финансовый директор", subject: "Задание #9: Сокращение бюджета и оптимизация CPA", body: "Компания входит в режим разумной экономии. Бюджет сокращён до 18 миллионов, но CPA должен стать лучше на 10%. Если вы думали, что медиапланирование — это просто распределять деньги, добро пожаловать в реальный бизнес.", signature: "С уважением,\nФинансовый директор" }
+        ];
+
+        const seniorEmails = [
+            { id:2, from: "Директор по стратегии", subject: "Задание #2: Расширение бюджета и новые цели", body: "24 миллиона рублей — это уже серьёзный инструмент. 50 миллионов охвата — это не потолок, это точка отсчёта. Разбрасываться на всё подряд нельзя: каждый рубль должен работать, а не просто числиться в отчёте.", signature: "С уважением,\nДиректор по стратегии" },
+            { id:3, from: "Руководитель медиа-направления", subject: "Задание #3: Эффективность закупок (Частота, CPM, CPT)", body: "На этом уровне считают каждый контакт. Частота 4.2 — это порог запоминаемости, не декорация. CPM до 105 ₽ и CPT до 470 ₽ означают, что вы не переплачиваете за аудиторию. Всё это одновременно — вот что называется медиапланированием.", signature: "С уважением,\nРуководитель медиа-направления" },
+            { id:4, from: "Директор по performance-маркетингу", subject: "Задание #4: Жесткие KPI по кликам и CTR", body: "950 тысяч кликов и CTR 0.42% — вот граница между «мы провели кампанию» и «мы провели кампанию, которая работает». На этом уровне от вас ожидают не только охвата, но и реального вовлечения. Медийка без кликов — это просто дорогие обои.", signature: "С уважением,\nДиректор по performance-маркетингу" },
+            { id:5, from: "Директор по контенту", subject: "Задание #5: Баланс форматов и доля OLV", body: "30–45% на видео — это строгий коридор. Ниже — бренд-эффект слабый, аудитория вас не запоминает. Выше — финансовый блок начинает задавать неудобные вопросы. Умение держаться в рамках лимитов — признак стратегического мышления.", signature: "С уважением,\nДиректор по контенту" },
+            { id:6, from: "Директор по аналитике данных", subject: "Задание #6: Качество трафика (Визиты и PI)", body: "650 тысяч сессий — это тот объём, с которым можно строить валидные выводы. PI 52% означает, что вы привели на сайт людей с намерением, а не случайных зевак. Наша CRM не резиновая, просим не засорять её некачественным трафиком.", signature: "С уважением,\nДиректор по аналитике данных" },
+            { id:7, from: "Дирекция по маркетингу и Юридический департамент", subject: "Задание #7: Исключение ВКонтакте и Яндекс.Дисплей", body: "Решение принято на высшем уровне. ВКонтакте и Яндекс.Дисплей убираем из медиаплана немедленно и без обсуждений. Это либо смелый стратегический эксперимент, либо чья-то очень дорогая идея — узнаем по итогам квартала.", signature: "С уважением,\nДирекция по маркетингу и Юридический департамент" },
+            { id:8, from: "Генеральный директор", subject: "Задание #8: KPI по конверсиям", body: "Красивые метрики на дашборде — это хорошо для презентаций. Но 3400 конверсий — это то, что волнует меня лично и влияет на реальный бизнес. Воронка должна генерировать целевые действия, а не просто имитировать бурную активность.", signature: "С уважением,\nГенеральный директор" },
+            { id:9, from: "Совет директоров", subject: "Задание #9: Антикризисная оптимизация (Бюджет и CPA)", body: "Глобальная оптимизация расходов. Бюджет сокращён до 18 миллионов, а CPA должен снизиться на 12%. Если вы думали, что позиция Senior означает «работать меньше» — у нас плохие новости. Ждём обновлённый план до конца дня.", signature: "С уважением,\nСовет директоров" }
+        ];
+
+        let letters = juniorEmails;
+
+        // ========== РАСЧЁТ СТАТИСТИКИ ==========
+        function calculateStats() {
+            if (!selectedPlatforms.length) {
+                return { totalSpent:0, totalImpressions:0, totalClicks:0, totalSessions:0, totalConversions:0, reach:0, avgCPM:0, avgCTR:0, avgCPC:0, avgCPT:0, avgFrequency:0, avgBR:0, avgPI:0, olvShare:0, avgVTR:0, avgCR:0, avgCPA:0 };
+            }
+            let totalSpent = selectedPlatforms.reduce((s,p) => s + p.budget, 0);
+            let totalImpressions = selectedPlatforms.reduce((s,p) => s + Math.floor(p.budget/p.CPM*1000), 0);
+            let totalClicks = selectedPlatforms.filter(p => p.platform !== 'SmartTV').reduce((s,p) => s + Math.floor(p.budget/p.CPM*1000 * (p.CTR/100)), 0);
+            let totalSessions = selectedPlatforms.filter(p => p.platform !== 'SmartTV').reduce((s,p) => { let clicks = Math.floor(p.budget/p.CPM*1000 * (p.CTR/100)); return s + Math.floor(clicks * (1 - p.BR/100)); },0);
+            let totalConversions = selectedPlatforms.reduce((s,p) => s + Math.floor(p.budget / p.CPA), 0);
+            let reach = Math.floor(selectedPlatforms.reduce((s,p) => s + (p.budget/p.CPM*1000)/p.frequency,0) * 0.75);
+            let avgCPM = totalImpressions ? Math.round((totalSpent/totalImpressions)*1000) : 0;
+            let avgCTR = totalImpressions ? (totalClicks/totalImpressions)*100 : 0;
+            let avgCPC = totalClicks ? Math.round(totalSpent/totalClicks) : 0;
+            let avgCPT = reach ? Math.round((totalSpent/reach)*1000) : 0;
+            let avgFrequency = reach ? Math.round((totalImpressions/reach)*100)/100 : 0;
+            let avgBR = totalClicks ? Math.round(selectedPlatforms.reduce((s,p) => s + (p.budget/p.CPM*1000 * (p.CTR/100) * p.BR/100),0) / totalClicks * 100) : 0;
+            let avgPI = totalSpent ? selectedPlatforms.reduce((s,p) => s + p.budget * p.PI,0) / totalSpent : 0;
+            let olvBudget = selectedPlatforms.filter(p => p.section === 'Видео').reduce((s,p) => s + p.budget,0);
+            let olvShare = totalSpent ? (olvBudget / totalSpent * 100) : 0;
+            let totalVideoImpressions = selectedPlatforms.filter(p => p.section === 'Видео').reduce((s,p) => s + Math.floor(p.budget/p.CPM*1000), 0);
+            let totalViews = selectedPlatforms.filter(p => p.section === 'Видео').reduce((s,p) => s + Math.floor(p.budget/p.CPM*1000 * (p.VTR/100)), 0);
+            let avgVTR = totalVideoImpressions ? Math.round((totalViews / totalVideoImpressions) * 100 * 100) / 100 : 0;
+            let avgCR = totalSessions ? Math.round((totalConversions / totalSessions) * 100 * 100) / 100 : 0;
+            let avgCPA = totalConversions ? Math.round(totalSpent / totalConversions) : 0;
+            return { totalSpent, totalImpressions, totalClicks, totalSessions, totalConversions, reach, avgCPM, avgCTR, avgCPC, avgCPT, avgFrequency, avgBR, avgPI, olvShare, avgVTR, avgCR, avgCPA };
+        }
+
+        // ========== РЕНДЕР МЕДИАПЛАНА ==========
+        function renderMediaplan() {
+            let mp = document.getElementById('mediaplan');
+            if (!selectedPlatforms.length) {
+                mp.innerHTML = '<div class="empty-drop">Перетащите площадки сюда</div>';
+                document.getElementById('mediaplan-summary').innerText = `0 площадок, 0 ₽`;
+                return;
+            }
+            let totalBudget = selectedPlatforms.reduce((s,p) => s + p.budget, 0);
+            document.getElementById('mediaplan-summary').innerText = `${selectedPlatforms.length} площадок, ${totalBudget.toLocaleString()} ₽`;
+
+            let grouped = {};
+            selectedPlatforms.forEach(p => { if (!grouped[p.section]) grouped[p.section] = []; grouped[p.section].push(p); });
+            let html = '<div class="mediaplan-sections">';
+            for (let section in grouped) {
+                html += `<div class="mediaplan-section"><div class="mediaplan-section-title"><i class="fas fa-folder-open"></i> ${section}</div><div class="platforms-grid">`;
+                grouped[section].forEach(p => {
+                    let orig = platforms.find(x => x.id === p.id);
+                    let perc = Math.min(100, (p.budget / orig.budgetLimit)*100);
+                    let cpc = p.CTR ? Math.round(p.CPM / (p.CTR/100) / 1000) : '—';
+                    let vtr = p.section === 'Видео' ? `<span><i class="fas fa-video"></i> ${Math.round(p.VTR)}%</span>` : '';
+                    let roundedCPM = Math.round(p.CPM);
+                    let roundedCPA = Math.round(p.CPA);
+                    html += `<div class="platform" style="--percentage:${perc}%">
+                        <div class="platform-header">
+                            <i class="${p.icon}"></i>
+                            <span>${p.name}</span>
+                        </div>
+                        <div class="platform-metrics">
+                            <span><i class="fas fa-tag"></i> ${roundedCPM}₽</span>
+                            <span><i class="fas fa-percent"></i> ${p.CTR.toFixed(2)}%</span>
+                            <span><i class="fas fa-coins"></i> ${cpc}₽</span>
+                            ${vtr}
+                            <span><i class="fas fa-redo"></i> ${p.frequency}</span>
+                            <span><i class="fas fa-bullseye"></i> ${roundedCPA}₽</span>
+                        </div>
+                        <div class="budget-control">
+                            <input type="range" min="100000" max="${orig.budgetLimit}" value="${p.budget}" step="50000" class="budget-slider" data-id="${p.id}" oninput="window.updatePlatformBudgetSlider(this)" onchange="window.updatePlatformBudgetOnChange(this)">
+                            <input type="number" class="budget-input" value="${p.budget}" min="100000" max="${orig.budgetLimit}" step="50000" data-id="${p.id}" onchange="window.updatePlatformBudgetFromInput(this)">
+                        </div>
+                        <div class="budget-slider-value">
+                            <span>${p.budget.toLocaleString()}₽</span>
+                            <span>лимит ${orig.budgetLimit.toLocaleString()}₽</span>
+                        </div>
+                        <button class="remove-btn" data-id="${p.id}">×</button>
+                    </div>`;
+                });
+                html += '</div></div>';
+            }
+            html += '</div>';
+            mp.innerHTML = html;
+            document.querySelectorAll('.remove-btn').forEach(b => b.addEventListener('click', e => { 
+                let id = e.target.dataset.id; 
+                selectedPlatforms = selectedPlatforms.filter(p => p.id != id); 
+                renderPlatforms(); 
+                updateMediaplan(); 
+            }));
+        }
+
+        // ========== МЕТРИКИ ==========
+        function updateMetrics() {
+            let s = calculateStats();
+            document.getElementById('key-metrics').innerHTML = `
+                <div class="metric-card" id="metric-totalSpent"><i class="fas fa-wallet"></i><span class="metric-value">${s.totalSpent.toLocaleString()}₽</span><span class="metric-label">расход</span></div>
+                <div class="metric-card" id="metric-reach"><i class="fas fa-users"></i><span class="metric-value">${s.reach.toLocaleString()}</span><span class="metric-label">охват</span></div>
+                <div class="metric-card" id="metric-totalImpressions"><i class="fas fa-eye"></i><span class="metric-value">${s.totalImpressions.toLocaleString()}</span><span class="metric-label">показы</span></div>
+                <div class="metric-card" id="metric-totalClicks"><i class="fas fa-mouse-pointer"></i><span class="metric-value">${s.totalClicks.toLocaleString()}</span><span class="metric-label">клики</span></div>
+                <div class="metric-card" id="metric-totalSessions"><i class="fas fa-user-clock"></i><span class="metric-value">${s.totalSessions.toLocaleString()}</span><span class="metric-label">визиты</span></div>
+            `;
+            document.getElementById('price-metrics').innerHTML = `
+                <div class="metric-card" id="metric-avgCPM"><i class="fas fa-tag"></i><span class="metric-value">${Math.round(s.avgCPM)}₽</span><span class="metric-label">CPM</span></div>
+                <div class="metric-card" id="metric-avgCPT"><i class="fas fa-chart-line"></i><span class="metric-value">${Math.round(s.avgCPT)}₽</span><span class="metric-label">CPT</span></div>
+                <div class="metric-card" id="metric-avgCPA"><i class="fas fa-money-bill-wave"></i><span class="metric-value">${Math.round(s.avgCPA)}₽</span><span class="metric-label">CPA</span></div>
+                <div class="metric-card" id="metric-avgCPC"><i class="fas fa-coins"></i><span class="metric-value">${Math.round(s.avgCPC)}₽</span><span class="metric-label">CPC</span></div>
+            `;
+            document.getElementById('postclick-metrics').innerHTML = `
+                <div class="metric-card" id="metric-avgCTR"><i class="fas fa-percentage"></i><span class="metric-value">${s.avgCTR.toFixed(2)}%</span><span class="metric-label">CTR</span></div>
+                <div class="metric-card" id="metric-avgFrequency"><i class="fas fa-redo"></i><span class="metric-value">${s.avgFrequency.toFixed(1)}</span><span class="metric-label">частота</span></div>
+                <div class="metric-card" id="metric-avgPI"><i class="fas fa-chart-pie"></i><span class="metric-value">${Math.round(s.avgPI)}%</span><span class="metric-label">PI</span></div>
+                <div class="metric-card" id="metric-avgCR"><i class="fas fa-exchange-alt"></i><span class="metric-value">${Math.round(s.avgCR)}%</span><span class="metric-label">CR</span></div>
+                <div class="metric-card" id="metric-totalConversions"><i class="fas fa-bullseye"></i><span class="metric-value">${s.totalConversions}</span><span class="metric-label">конверсии</span></div>
+            `;
+
+            document.querySelectorAll('.metric-card').forEach(card => card.classList.remove('highlight'));
+            let task = tasks[currentTaskIndex];
+            if (task && task.metrics) {
+                task.metrics.forEach(metric => {
+                    let el = document.getElementById(`metric-${metric}`);
+                    if (el) el.classList.add('highlight');
+                });
+            }
+        }
+
+        // ========== ТРЕКЕР ВЫПОЛНЕНИЯ С ПРОГРЕСС-БАРАМИ ==========
+        function updateTaskTracker() {
+            let stats = calculateStats();
+            let task = tasks[currentTaskIndex];
+            let trackerDiv = document.getElementById('task-tracker');
+            if (!task) {
+                trackerDiv.innerHTML = '';
+                return;
+            }
+            let html = '';
+
+            // Всегда показываем прогресс бюджета
+            let budgetPercent = Math.min(100, (stats.totalSpent / TOTAL_BUDGET) * 100);
+            let budgetSuccess = stats.totalSpent >= TOTAL_BUDGET;
+            html += `<div class="tracker-item">
+                <div class="tracker-header">
+                    <span class="tracker-label">Бюджет:</span>
+                    <span class="tracker-values">${stats.totalSpent.toLocaleString()}₽ / ${TOTAL_BUDGET.toLocaleString()}₽</span>
+                </div>
+                <div class="progress-bar-container">
+                    <div class="progress-bar-fill ${budgetSuccess ? 'success' : 'fail'}" style="width: ${budgetPercent}%"></div>
+                </div>
+            </div>`;
+
+            // Далее метрики задачи
+            task.metrics.forEach(metric => {
+                let currentVal = stats[metric];
+                let targetVal = null;
+                let label = '';
+                let isRange = false;
+                let min, max;
+
+                if (metric === 'olvShare' && task.targets.olvShare_min !== undefined) {
+                    isRange = true;
+                    min = task.targets.olvShare_min;
+                    max = task.targets.olvShare_max;
+                    label = 'Доля OLV';
+                } else if (metric === 'avgCPA' && typeof task.targets.avgCPA === 'function') {
+                    targetVal = task.targets.avgCPA(previousCPA);
+                    label = 'CPA';
+                } else if (task.targets[metric] !== undefined) {
+                    targetVal = task.targets[metric];
+                    if (metric === 'totalSpent') label = 'Бюджет (задача)';
+                    else if (metric === 'reach') label = 'Охват';
+                    else if (metric === 'avgFrequency') label = 'Частота';
+                    else if (metric === 'avgCPM') label = 'CPM';
+                    else if (metric === 'avgCPT') label = 'CPT';
+                    else if (metric === 'avgCTR') label = 'CTR';
+                    else if (metric === 'totalClicks') label = 'Клики';
+                    else if (metric === 'totalSessions') label = 'Визиты';
+                    else if (metric === 'avgPI') label = 'PI';
+                    else if (metric === 'totalConversions') label = 'Конверсии';
+                }
+
+                if (isRange) {
+                    let success = currentVal >= min && currentVal <= max;
+                    html += `<div class="tracker-item">
+                        <div class="tracker-header">
+                            <span class="tracker-label">${label}:</span>
+                            <span class="tracker-values">${currentVal.toFixed(1)}% / ${min}-${max}%</span>
+                        </div>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar-fill ${success ? 'success' : 'fail'}" style="width: 100%"></div>
+                        </div>
+                    </div>`;
+                } else if (targetVal !== null) {
+                    let success = false;
+                    if (task.description.includes('≥')) {
+                        success = currentVal >= targetVal;
+                    } else if (task.description.includes('≤')) {
+                        success = currentVal <= targetVal;
+                    }
+                    let percent = Math.min(100, (currentVal / targetVal) * 100);
+                    html += `<div class="tracker-item">
+                        <div class="tracker-header">
+                            <span class="tracker-label">${label}:</span>
+                            <span class="tracker-values">${currentVal.toLocaleString()} / ${targetVal.toLocaleString()}</span>
+                        </div>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar-fill ${success ? 'success' : 'fail'}" style="width: ${percent}%"></div>
+                        </div>
+                    </div>`;
+                }
+            });
+
+            trackerDiv.innerHTML = html || '<div class="tracker-item">Нет активных трекеров</div>';
+        }
+
+        function updateCharts() {
+            let ctx = document.getElementById('section-canvas').getContext('2d');
+            if (sectionChart) sectionChart.destroy();
+            let sections = {};
+            selectedPlatforms.forEach(p => { sections[p.section] = (sections[p.section] || 0) + p.budget; });
+            let labels = Object.keys(sections);
+            let data = Object.values(sections);
+            let colors = ['#00B956', '#731982', '#FFA500', '#1E90FF', '#DC143C'];
+            if (currentTaskIndex === 4) { // задача 5
+                let videoIndex = labels.indexOf('Видео');
+                if (videoIndex !== -1) colors[videoIndex] = '#FF8C00';
+            }
+            let legendColor = document.body.classList.contains('dark-theme') ? '#ffffff' : '#2c3e50';
+            if (labels.length === 0) {
+                ctx.clearRect(0,0,ctx.canvas.width,ctx.canvas.height);
+                ctx.font = '14px Montserrat'; ctx.fillStyle = '#aaa'; ctx.textAlign = 'center'; ctx.fillText('Нет данных', ctx.canvas.width/2, ctx.canvas.height/2);
+                return;
+            }
+            sectionChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 0 }] },
+                options: { 
+                    responsive: true, maintainAspectRatio: false, 
+                    plugins: { 
+                        legend: { position: 'bottom', labels: { font: { size:11 }, color: legendColor } }, 
+                        datalabels: { display: true, formatter: (val,ctx) => { let total = ctx.dataset.data.reduce((a,b)=>a+b,0); return Math.round(val/total*100)+'%'; }, color: '#fff', font: { weight:'bold', size:11 } } 
+                    }, 
+                    cutout:'65%' 
+                },
+                plugins: [ChartDataLabels]
+            });
+        }
+
+        function updateBudgetProgress() {
+            let spent = calculateStats().totalSpent;
+            let percent = Math.min(100, (spent/TOTAL_BUDGET*100));
+            let progressBar = document.getElementById('budget-progress-bar');
+            progressBar.style.width = percent + '%';
+            if (spent > TOTAL_BUDGET) {
+                progressBar.classList.add('over-budget');
+            } else {
+                progressBar.classList.remove('over-budget');
+            }
+            document.getElementById('budget-text').innerText = `Бюджет: ${spent.toLocaleString()} / ${TOTAL_BUDGET.toLocaleString()} ₽`;
+        }
+
+        function updateTasksStatus() {
+            let stats = calculateStats();
+            tasks.forEach((t, idx) => {
+                let el = document.querySelector(`.task-item[data-task-id="${t.id}"]`);
+                if (el) {
+                    if (t.condition(stats)) el.classList.add('completed');
+                    else el.classList.remove('completed');
+                }
+            });
+        }
+
+        function updateMediaplan() {
+            renderMediaplan();
+            updateMetrics();
+            updateCharts();
+            updateBudgetProgress();
+            updateTasksStatus();
+            updateTaskTracker();
+        }
+
+        // ========== УПРАВЛЕНИЕ ЗАДАЧАМИ И ПИСЬМАМИ ==========
+        function showNewTaskModal(taskIndex) {
+            let letterIndex = taskIndex - 1; // после выполнения задачи 1 (id=1) taskIndex становится 2? нет, currentTaskIndex увеличивается после выполнения
+            // После выполнения задачи 1, currentTaskIndex = 1 (индекс задачи 2). Тогда taskIndex = 1, letterIndex = 0 — верно.
+            if (letterIndex >= 0 && letterIndex < letters.length) {
+                lettersUnlocked[letterIndex] = true;
+                let letter = letters[letterIndex];
+                let content = `
+                    <div class="client-letter">
+                        <div class="letter-header">
+                            <div class="letter-icon"><i class="fas fa-envelope"></i></div>
+                            <div class="letter-from-block">
+                                <div class="letter-from-name">${letter.from}</div>
+                                <div class="letter-date">${new Date().toLocaleDateString('ru-RU')}</div>
+                            </div>
+                        </div>
+                        <div class="letter-subject">${letter.subject}</div>
+                        <div class="letter-body">${letter.body}</div>
+                        <div class="letter-signature">${letter.signature}</div>
+                    </div>
+                `;
+                document.getElementById('new-task-content').innerHTML = content;
+                document.getElementById('new-task-modal').style.display = 'flex';
+                if (document.getElementById('letters-tab-btn').classList.contains('active')) {
+                    updateLetterCounter();
+                    displayLetter(currentLetterIndex);
+                }
+            }
+        }
+
+        function displayLetter(index) {
+            if (index < 0 || index >= letters.length) return;
+            if (!lettersUnlocked[index]) {
+                document.getElementById('brief-content').innerHTML = `<div class="client-letter">Письмо ещё не получено.</div>`;
+                return;
+            }
+            currentLetterIndex = index;
+            let letter = letters[index];
+            let content = `
+                <div class="client-letter">
+                    <div class="letter-header">
+                        <div class="letter-icon"><i class="fas fa-envelope"></i></div>
+                        <div class="letter-from-block">
+                            <div class="letter-from-name">${letter.from}</div>
+                            <div class="letter-date">${new Date().toLocaleDateString('ru-RU')}</div>
+                        </div>
+                    </div>
+                    <div class="letter-subject">${letter.subject}</div>
+                    <div class="letter-body">${letter.body}</div>
+                    <div class="letter-signature">${letter.signature}</div>
+                </div>
+            `;
+            document.getElementById('brief-content').innerHTML = content;
+            document.getElementById('letter-counter').innerText = `${index+1}/${letters.length}`;
+        }
+
+        function updateLetterCounter() {
+            let unlockedCount = lettersUnlocked.filter(v => v).length;
+            document.getElementById('letter-counter').innerText = `${unlockedCount}/${letters.length}`;
+            if (unlockedCount === 0) {
+                document.getElementById('brief-content').innerHTML = `<div class="client-letter">Пока нет писем.</div>`;
+            } else {
+                if (currentLetterIndex < 0 || currentLetterIndex >= letters.length || !lettersUnlocked[currentLetterIndex]) {
+                    let first = lettersUnlocked.findIndex(v => v);
+                    if (first !== -1) displayLetter(first);
+                }
+            }
+        }
+
+        function checkCurrentTask() {
+            let stats = calculateStats();
+            let task = tasks[currentTaskIndex];
+            if (!task) { showNotification('Все задания выполнены!','success'); return; }
+            if (task.condition(stats)) {
+                if (!completedTasks.includes(task.id)) completedTasks.push(task.id);
+                if (task.onComplete) task.onComplete(stats);
+                if (currentTaskIndex < tasks.length-1) {
+                    currentTaskIndex++;
+                    renderAllTasks();
+                    showNotification('✅ Задание выполнено!', 'success');
+                    let nextTask = tasks[currentTaskIndex];
+                    if (nextTask) {
+                        if (nextTask.onStart) nextTask.onStart();
+                        showNewTaskModal(currentTaskIndex);
+                    }
+                } else {
+                    document.getElementById('success-modal').style.display = 'flex';
+                }
+                updateMediaplan();
+            } else {
+                showNotification(`❌ Условие не выполнено, поправьте план`, 'error');
+            }
+        }
+
+        function renderAllTasks() {
+            let container = document.getElementById('tasks-container');
+            container.innerHTML = '';
+            tasks.forEach((t, idx) => {
+                if (idx <= currentTaskIndex || completedTasks.includes(t.id)) {
+                    let cls = completedTasks.includes(t.id) ? 'completed' : '';
+                    container.innerHTML += `<div class="task-item ${cls}" data-task-id="${t.id}"><i class="${t.icon}"></i><span class="task-text">${t.description}</span></div>`;
+                }
+            });
+        }
+
+        // ========== ПЛОЩАДКИ С СОРТИРОВКОЙ ==========
+        function sortPlatforms(platformsArray, sortKey) {
+            if (sortKey === 'default') return platformsArray;
+            return [...platformsArray].sort((a, b) => {
+                if (sortKey === 'cpm') return a.CPM - b.CPM;
+                if (sortKey === 'ctr') return b.CTR - a.CTR;
+                if (sortKey === 'cpa') return a.CPA - b.CPA;
+                return 0;
+            });
+        }
+
+        function renderPlatforms() {
+            let cont = document.getElementById('platforms-content');
+            cont.innerHTML = '';
+            let grouped = {};
+            let available = platforms.filter(p => !selectedPlatforms.some(sp => sp.id === p.id));
+            let sortedAvailable = sortPlatforms(available, currentSort);
+            sortedAvailable.forEach(p => {
+                if (selectedSection !== 'all' && p.section !== selectedSection) return;
+                if (!grouped[p.section]) grouped[p.section] = [];
+                grouped[p.section].push(p);
+            });
+            for (let section in grouped) {
+                let block = document.createElement('div');
+                block.className = 'section-group';
+                block.innerHTML = `<div class="section-group-title"><i class="fas fa-folder-open"></i> ${section}</div><div class="platforms-grid"></div>`;
+                let grid = block.querySelector('.platforms-grid');
+                grouped[section].forEach(p => {
+                    let cpc = p.CTR ? Math.round(p.CPM / (p.CTR/100) / 1000) : '—';
+                    let vtr = p.section === 'Видео' ? `VTR: ${Math.round(p.VTR)}%` : '';
+                    let card = document.createElement('div');
+                    card.className = 'platform';
+                    card.setAttribute('draggable', 'true');
+                    card.dataset.id = p.id;
+                    card.innerHTML = `
+                        <div class="platform-header">
+                            <i class="${p.icon}"></i><span>${p.name}</span>
+                            <button class="quick-add-btn" data-id="${p.id}" title="Быстро добавить">+</button>
+                            <i class="fas fa-info-circle platform-info-btn" onclick="window.showPlatformInfo(${p.id})"></i>
+                        </div>
+                        <small>CPM ${Math.round(p.CPM)}₽, CTR ${p.CTR.toFixed(2)}%, CPC ${cpc}₽, ${vtr ? vtr+', ' : ''}лимит ${(p.budgetLimit/1e6).toFixed(1)}M</small>
+                    `;
+                    grid.appendChild(card);
+                });
+                cont.appendChild(block);
+            }
+            document.querySelectorAll('.quick-add-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    let id = btn.dataset.id;
+                    let platform = platforms.find(p => p.id == id);
+                    if (!platform) return;
+                    if (selectedPlatforms.some(p => p.id == id)) {
+                        showWarning('Эта площадка уже добавлена');
+                        return;
+                    }
+                    let defaultBudget = Math.min(500000, platform.budgetLimit);
+                    if (defaultBudget < 100000) defaultBudget = 100000;
+                    let copy = {...platform, budget: defaultBudget};
+                    selectedPlatforms.push(copy);
+                    renderPlatforms();
+                    updateMediaplan();
+                });
+            });
+        }
+
+        function filterPlatforms() { renderPlatforms(); }
+
+        function checkBudgetAndAdjust(platformId, newVal) {
+            let platform = selectedPlatforms.find(p => p.id == platformId);
+            if (!platform) return newVal;
+            let otherSum = selectedPlatforms.filter(p => p.id != platformId).reduce((s,p) => s + p.budget, 0);
+            if (otherSum + newVal > TOTAL_BUDGET) {
+                let maxAllowed = TOTAL_BUDGET - otherSum;
+                showNotification('Превышение общего бюджета! Значение скорректировано.', 'error');
+                return Math.max(100000, maxAllowed);
+            }
+            return newVal;
+        }
+
+        // ========== СВОРАЧИВАНИЕ МЕДИАПЛАНА ==========
+        document.getElementById('mediaplan-header').addEventListener('click', function(e) {
+            if (e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
+            toggleCollapse();
+        });
+        document.getElementById('collapse-mediaplan').addEventListener('click', function(e) {
+            e.stopPropagation();
+            toggleCollapse();
+        });
+
+        function toggleCollapse() {
+            let content = document.getElementById('mediaplan-content');
+            let icon = document.querySelector('#collapse-mediaplan i');
+            mediaplanCollapsed = !mediaplanCollapsed;
+            if (mediaplanCollapsed) {
+                content.classList.add('collapsed');
+                icon.className = 'fas fa-chevron-down';
+            } else {
+                content.classList.remove('collapsed');
+                icon.className = 'fas fa-chevron-up';
+            }
+        }
+
+        // ========== ТЁМНАЯ ТЕМА ==========
+        document.getElementById('theme-toggle').addEventListener('click', function() {
+            document.body.classList.toggle('dark-theme');
+            this.innerHTML = document.body.classList.contains('dark-theme') ? '<i class="fas fa-sun"></i> Светлая тема' : '<i class="fas fa-moon"></i> Тёмная тема';
+            updateCharts();
+        });
+
+        // ========== ВЫБОР СЛОЖНОСТИ ==========
+        let selectedDifficulty = null;
+        const juniorBtn = document.getElementById('difficulty-junior');
+        const seniorBtn = document.getElementById('difficulty-senior');
+        const descDiv = document.getElementById('difficulty-description');
+        const startBtn = document.getElementById('skip-tutorial');
+
+        juniorBtn.addEventListener('click', function() {
+            juniorBtn.classList.remove('btn-secondary');
+            juniorBtn.classList.add('btn-primary');
+            seniorBtn.classList.remove('btn-primary');
+            seniorBtn.classList.add('btn-secondary');
+            selectedDifficulty = 'junior';
+            tasks = tasksJunior;
+            letters = juniorEmails;
+            descDiv.innerText = 'Junior — идеально для первого знакомства с медиапланированием. Задачи средней сложности.';
+            startBtn.disabled = false;
+        });
+        seniorBtn.addEventListener('click', function() {
+            seniorBtn.classList.remove('btn-secondary');
+            seniorBtn.classList.add('btn-primary');
+            juniorBtn.classList.remove('btn-primary');
+            juniorBtn.classList.add('btn-secondary');
+            selectedDifficulty = 'senior';
+            tasks = tasksSenior;
+            letters = seniorEmails;
+            descDiv.innerText = 'Senior — для опытных специалистов. Более строгие KPI и дополнительные ограничения.';
+            startBtn.disabled = false;
+        });
+
+        // ========== ФИЛЬТР-МЕНЮ ==========
+        const filterToggle = document.getElementById('filter-toggle');
+        const filterMenu = document.getElementById('filter-menu');
+        filterToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            filterMenu.classList.toggle('show');
+        });
+        document.addEventListener('click', (e) => {
+            if (!filterToggle.contains(e.target) && !filterMenu.contains(e.target)) {
+                filterMenu.classList.remove('show');
+            }
+        });
+        filterMenu.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('click', () => {
+                filterMenu.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentSort = btn.dataset.sort;
+                renderPlatforms();
+                filterMenu.classList.remove('show');
+            });
+        });
+
+        // ========== ПЕРЕКЛЮЧЕНИЕ МЕТРИКИ/ГРАФИК ==========
+        const metricsTab = document.getElementById('metrics-tab');
+        const chartTab = document.getElementById('chart-tab');
+        const statsContent = document.getElementById('stats-content');
+        metricsTab.addEventListener('click', () => {
+            metricsTab.classList.add('active');
+            chartTab.classList.remove('active');
+            statsContent.classList.remove('show-chart');
+            statsContent.classList.add('show-metrics');
+        });
+        chartTab.addEventListener('click', () => {
+            chartTab.classList.add('active');
+            metricsTab.classList.remove('active');
+            statsContent.classList.remove('show-metrics');
+            statsContent.classList.add('show-chart');
+            updateCharts();
+        });
+
+        // ========== ИНИЦИАЛИЗАЦИЯ ==========
+        function initGame() {
+            document.getElementById('tutorial-modal').style.display = 'flex';
+
+            document.getElementById('skip-tutorial').addEventListener('click', ()=>{
+                if (!selectedDifficulty) {
+                    alert('Пожалуйста, выберите уровень сложности');
+                    return;
+                }
+                document.getElementById('tutorial-modal').style.display = 'none';
+                renderPlatforms();
+                renderAllTasks();
+                setupEventListeners();
+                updateMediaplan();
+            });
+
+            document.querySelectorAll('.close').forEach(c => c.addEventListener('click', function(){
+                this.closest('.modal').style.display = 'none';
+            }));
+            window.onclick = (event) => {
+                if (event.target.classList.contains('modal')) {
+                    event.target.style.display = 'none';
+                }
+            };
+
+            document.getElementById('play-again-btn').addEventListener('click', () => {
+                document.getElementById('success-modal').style.display = 'none';
+                resetGame();
+                document.getElementById('tutorial-modal').style.display = 'flex';
+                selectedDifficulty = null;
+                juniorBtn.classList.remove('btn-primary');
+                juniorBtn.classList.add('btn-secondary');
+                seniorBtn.classList.remove('btn-primary');
+                seniorBtn.classList.add('btn-secondary');
+                descDiv.innerText = 'Нажмите на уровень, чтобы увидеть описание';
+                startBtn.disabled = true;
+            });
+        }
+
+        function resetGame() {
+            selectedPlatforms = [];
+            completedTasks = [];
+            currentTaskIndex = 0;
+            TOTAL_BUDGET = 12000000;
+            previousCPA = 0;
+            lettersUnlocked = new Array(8).fill(false);
+            currentLetterIndex = 0;
+            renderPlatforms();
+            updateMediaplan();
+            renderAllTasks();
+            document.getElementById('brief-content').innerHTML = `<p>${briefs.megafon.description}</p>`;
+            document.getElementById('brief-tab-btn').classList.add('active');
+            document.getElementById('letters-tab-btn').classList.remove('active');
+            document.getElementById('letter-slider').style.display = 'none';
+        }
+
+        function setupEventListeners() {
+            document.getElementById('brief-tab-btn').addEventListener('click', function(){
+                this.classList.add('active');
+                document.getElementById('letters-tab-btn').classList.remove('active');
+                document.getElementById('letter-slider').style.display = 'none';
+                document.getElementById('brief-content').innerHTML = `<p>${briefs.megafon.description}</p>`;
+            });
+            document.getElementById('letters-tab-btn').addEventListener('click', function(){
+                this.classList.add('active');
+                document.getElementById('brief-tab-btn').classList.remove('active');
+                document.getElementById('letter-slider').style.display = 'flex';
+                updateLetterCounter();
+                if (lettersUnlocked.some(v => v)) {
+                    if (currentLetterIndex < 0 || currentLetterIndex >= letters.length || !lettersUnlocked[currentLetterIndex]) {
+                        let first = lettersUnlocked.findIndex(v => v);
+                        if (first !== -1) displayLetter(first);
+                    } else {
+                        displayLetter(currentLetterIndex);
+                    }
+                } else {
+                    document.getElementById('brief-content').innerHTML = `<div class="client-letter">Пока нет писем.</div>`;
+                }
+            });
+
+            document.getElementById('prev-letter').addEventListener('click', ()=>{
+                let newIndex = currentLetterIndex - 1;
+                while (newIndex >= 0 && !lettersUnlocked[newIndex]) newIndex--;
+                if (newIndex >= 0) displayLetter(newIndex);
+            });
+            document.getElementById('next-letter').addEventListener('click', ()=>{
+                let newIndex = currentLetterIndex + 1;
+                while (newIndex < letters.length && !lettersUnlocked[newIndex]) newIndex++;
+                if (newIndex < letters.length) displayLetter(newIndex);
+            });
+
+            document.getElementById('check-task').addEventListener('click', checkCurrentTask);
+            document.getElementById('reset-plan').addEventListener('click', ()=>{
+                if (confirm('Очистить медиаплан?')) {
+                    selectedPlatforms = [];
+                    completedTasks = [];
+                    currentTaskIndex = 0;
+                    TOTAL_BUDGET = 12000000;
+                    previousCPA = 0;
+                    lettersUnlocked = new Array(8).fill(false);
+                    renderPlatforms();
+                    updateMediaplan();
+                    renderAllTasks();
+                    document.getElementById('brief-content').innerHTML = `<p>${briefs.megafon.description}</p>`;
+                    document.getElementById('brief-tab-btn').classList.add('active');
+                    document.getElementById('letters-tab-btn').classList.remove('active');
+                    document.getElementById('letter-slider').style.display = 'none';
+                }
+            });
+            document.querySelectorAll('.section-tab').forEach(t => t.addEventListener('click', function(){
+                document.querySelectorAll('.section-tab').forEach(tt=>tt.classList.remove('active'));
+                this.classList.add('active');
+                selectedSection = this.dataset.section;
+                filterPlatforms();
+            }));
+
+            document.addEventListener('dragstart', (e) => {
+                if (e.target.classList.contains('platform') && !e.target.closest('.in-mediaplan')) {
+                    e.dataTransfer.setData('text/plain', e.target.dataset.id);
+                }
+            });
+            document.getElementById('mediaplan').addEventListener('dragover', (e) => e.preventDefault());
+            document.getElementById('mediaplan').addEventListener('drop', (e) => {
+                e.preventDefault();
+                let id = e.dataTransfer.getData('text/plain');
+                if (!id) return;
+                let platform = platforms.find(p => p.id == id);
+                if (!platform) return;
+                if (selectedPlatforms.some(p => p.id == id)) {
+                    showWarning('Эта площадка уже добавлена');
+                    return;
+                }
+                let defaultBudget = Math.min(500000, platform.budgetLimit);
+                if (defaultBudget < 100000) defaultBudget = 100000;
+                let copy = {...platform, budget: defaultBudget};
+                selectedPlatforms.push(copy);
+                renderPlatforms();
+                updateMediaplan();
+            });
+
+            document.getElementById('show-stats-info').addEventListener('click', ()=>{
+                document.getElementById('stats-info-modal').style.display = 'flex';
+            });
+            document.getElementById('understand-btn').addEventListener('click', ()=>{
+                document.getElementById('stats-info-modal').style.display = 'none';
+            });
+            document.getElementById('close-task-modal').addEventListener('click', ()=>{
+                document.getElementById('new-task-modal').style.display = 'none';
+            });
+            document.getElementById('close-success-modal').addEventListener('click', ()=>{
+                document.getElementById('success-modal').style.display = 'none';
+            });
+
+            // Добавляем обработчик для кнопки добавления из модалки информации о площадке
+            const addFromInfoBtn = document.getElementById('add-platform-from-info');
+            if (addFromInfoBtn) {
+                addFromInfoBtn.addEventListener('click', ()=>{
+                    if (window.currentPlatformId !== undefined) {
+                        let id = window.currentPlatformId;
+                        let platform = platforms.find(p => p.id == id);
+                        if (platform && !selectedPlatforms.some(p => p.id == id)) {
+                            let defaultBudget = Math.min(500000, platform.budgetLimit);
+                            if (defaultBudget < 100000) defaultBudget = 100000;
+                            let copy = {...platform, budget: defaultBudget};
+                            selectedPlatforms.push(copy);
+                            renderPlatforms();
+                            updateMediaplan();
+                        }
+                        document.getElementById('platform-info-modal').style.display = 'none';
+                    }
+                });
+            }
+        }
+
+        const briefs = {
+            megafon: {
+                title: "Мегафон · Имидж + Performance",
+                description: "Запуск digital-кампании Мегафон. Бюджет может меняться. KPI зависят от выбранного уровня сложности."
+            }
+        };
+
+        function showWarning(msg) { document.getElementById('warning-text').innerText = msg; document.getElementById('warning-modal').style.display = 'flex'; }
+        function showNotification(msg, type) { let n = document.createElement('div'); n.className = 'notification '+type; n.innerText = msg; document.body.appendChild(n); setTimeout(()=>n.remove(),3000); }
+
+        window.showPlatformInfo = (id) => {
+            let p = platforms.find(p=>p.id==id);
+            let cpc = p.CTR ? Math.round(p.CPM / (p.CTR/100) / 1000) : '—';
+            let vtr = p.section === 'Видео' ? `<p><strong>VTR:</strong> ${Math.round(p.VTR)}%</p>` : '';
+            document.getElementById('platform-info-title').innerHTML = `<i class="fas fa-info-circle"></i> ${p.name}`;
+            document.getElementById('platform-info-content').innerHTML = `
+                <p><strong>CPM:</strong> ${Math.round(p.CPM)}₽</p>
+                <p><strong>CTR:</strong> ${p.CTR.toFixed(2)}%</p>
+                <p><strong>CPC:</strong> ${cpc}₽</p>
+                <p><strong>BR:</strong> ${p.BR}%</p>
+                <p><strong>PI:</strong> ${p.PI}%</p>
+                <p><strong>CPA:</strong> ${Math.round(p.CPA)}₽</p>
+                ${vtr}
+                <p>${p.description}</p>
+            `;
+            document.getElementById('platform-info-modal').style.display = 'flex';
+            window.currentPlatformId = id;
+        };
+
+        window.updatePlatformBudgetSlider = (slider) => {
+            let val = Math.round(slider.value/50000)*50000;
+            if (val < 100000) val = 100000;
+            slider.value = val;
+            let input = slider.closest('.budget-control')?.querySelector('.budget-input');
+            if (input) input.value = val;
+        };
+        window.updatePlatformBudgetOnChange = (slider) => {
+            let id = parseInt(slider.dataset.id);
+            let val = parseInt(slider.value);
+            let adjusted = checkBudgetAndAdjust(id, val);
+            if (adjusted !== val) slider.value = adjusted;
+            let platform = selectedPlatforms.find(p=>p.id==id);
+            if (platform) { platform.budget = adjusted; updateMediaplan(); }
+        };
+        window.updatePlatformBudgetFromInput = (input) => {
+            let id = parseInt(input.dataset.id);
+            let val = parseInt(input.value);
+            let platform = selectedPlatforms.find(p=>p.id==id);
+            if (!platform) return;
+            let orig = platforms.find(p=>p.id==id);
+            if (isNaN(val) || val < 100000) val = 100000;
+            if (val > orig.budgetLimit) val = orig.budgetLimit;
+            let adjusted = checkBudgetAndAdjust(id, val);
+            if (adjusted !== val) input.value = adjusted;
+            platform.budget = adjusted;
+            let slider = input.closest('.budget-control')?.querySelector('.budget-slider');
+            if (slider) slider.value = adjusted;
+            updateMediaplan();
+        };
+
+        window.onload = initGame;
+    })();
+</script>
+</body>
+</html>
